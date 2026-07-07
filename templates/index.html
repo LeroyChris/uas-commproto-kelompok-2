@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IoT Telemetry Mini — Communication Protocol UAS</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+
+  <header class="hero">
+    <div class="wrap">
+      <div class="hero-top">
+        <div>
+          <p class="eyebrow">Communication Protocol &middot; UAS Final Project</p>
+          <h1>IoT Telemetry Mini</h1>
+          <p class="sub">
+            REST API untuk pengiriman data sensor, validasi payload, klasifikasi alert,
+            logging, dan workflow automation via n8n.
+          </p>
+        </div>
+        <span class="status-badge"><span class="status-dot"></span>API RUNNING</span>
+      </div>
+
+      <div class="stack-row">
+        <span class="chip">FastAPI</span>
+        <span class="chip">REST API</span>
+        <span class="chip">Pydantic</span>
+        <span class="chip">Swagger</span>
+        <span class="chip">n8n</span>
+        <span class="chip">Docker</span>
+        <span class="chip">JSON Storage</span>
+      </div>
+
+      <div class="pipeline">
+        <div class="pipeline-row">
+          <div class="node">
+            <div class="node-dot">📡</div>
+            <div class="node-label">Sensor</div>
+          </div>
+          <div class="track"></div>
+          <div class="node">
+            <div class="node-dot">⚡</div>
+            <div class="node-label">FastAPI</div>
+          </div>
+          <div class="track t2"></div>
+          <div class="node">
+            <div class="node-dot">⚙️</div>
+            <div class="node-label">n8n</div>
+          </div>
+          <div class="track t3"></div>
+          <div class="node">
+            <div class="node-dot">💾</div>
+            <div class="node-label">Storage</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <!-- Server Stats -->
+    <section>
+      <h2 class="eyebrow" style="margin: 32px 0 8px;">&nearr; Server Statistics</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Total Telemetry</div>
+          <div class="stat-value" id="stat-total">...</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Rejected Payload</div>
+          <div class="stat-value rejected" id="stat-rejected">...</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Success Rate</div>
+          <div class="stat-value" id="stat-rate">...</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Last Update</div>
+          <div class="stat-updated" id="stat-updated" style="font-size:13px;">...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- n8n Alert Stats -->
+    <section>
+      <h2 class="eyebrow" style="margin: 32px 0 8px;">&nearr; n8n Alert Statistics</h2>
+      <p style="color: var(--muted); font-size: 13px; margin: 0 0 12px;">
+        Data diakumulasi oleh n8n secara independen dari server. n8n menghitung total processed,
+        warning, dan critical dari setiap data sensor yang masuk.
+      </p>
+      <div class="n8n-stats-grid">
+        <div class="n8n-stat-card">
+          <div class="stat-label">n8n Total Processed</div>
+          <div class="stat-value" id="n8n-processed">0</div>
+        </div>
+        <div class="n8n-stat-card">
+          <div class="stat-label">n8n Warning Count</div>
+          <div class="stat-value" style="color: var(--warning);" id="n8n-warning">0</div>
+        </div>
+        <div class="n8n-stat-card">
+          <div class="stat-label">n8n Critical Count</div>
+          <div class="stat-value" style="color: var(--critical);" id="n8n-critical">0</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Device List -->
+    <section>
+      <h2 class="eyebrow" style="margin: 32px 0 8px;">&nearr; Devices</h2>
+      <p style="color: var(--muted); font-size: 13px; margin: 0 0 12px;">
+        Ringkasan per-device dengan human-readable summary dari n8n. Device bersifat dinamis — muncul otomatis saat data sensor dikirim.
+      </p>
+      <div id="device-list" class="device-grid"></div>
+    </section>
+
+    <!-- Endpoints -->
+    <section>
+      <h2 class="eyebrow" style="margin: 32px 0 8px;">&nearr; Endpoints</h2>
+      <div class="actions-grid">
+        <a href="/docs" class="action-card" target="_blank">
+          <span class="method">SWAGGER</span>
+          <span class="desc">Open Swagger UI</span>
+          <span class="path">/docs</span>
+        </a>
+        <a href="/api/health" class="action-card" target="_blank">
+          <span class="method">GET</span>
+          <span class="desc">Health Check</span>
+          <span class="path">/api/health</span>
+        </a>
+        <a href="/api/telemetry/latest" class="action-card" target="_blank">
+          <span class="method">GET</span>
+          <span class="desc">Latest Telemetry</span>
+          <span class="path">/api/telemetry/latest</span>
+        </a>
+        <a href="/api/telemetry/history" class="action-card" target="_blank">
+          <span class="method">GET</span>
+          <span class="desc">Telemetry History</span>
+          <span class="path">/api/telemetry/history</span>
+        </a>
+        <a href="/api/telemetry/rejected" class="action-card" target="_blank">
+          <span class="method">GET</span>
+          <span class="desc">Rejected Payloads</span>
+          <span class="path">/api/telemetry/rejected</span>
+        </a>
+        <a href="/api/n8n/alert-stats" class="action-card" target="_blank">
+          <span class="method">GET</span>
+          <span class="desc">n8n Alert Stats</span>
+          <span class="path">/api/n8n/alert-stats</span>
+        </a>
+        <a href="/api/stats" class="action-card" target="_blank">
+          <span class="method">GET</span>
+          <span class="desc">Statistics Summary</span>
+          <span class="path">/api/stats</span>
+        </a>
+        <a href="#" class="action-card" id="reset-demo-btn">
+          <span class="method">POST</span>
+          <span class="desc">Reset Demo Data</span>
+          <span class="path">/api/demo/reset</span>
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <span>Communication Protocol &middot; Semester 2</span>
+    <span>v3.0.0</span>
+    <span>&copy; 2026 IoT Telemetry Mini</span>
+  </footer>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

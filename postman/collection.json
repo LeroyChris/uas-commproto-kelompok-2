@@ -1,0 +1,150 @@
+{
+  "info": {
+    "name": "IoT Telemetry Mini - UAS Communication Protocol",
+    "description": "Collection resmi untuk menguji REST API IoT Telemetry Mini.\n\nDevice bersifat **dinamis** — ganti nilai variable `device_name`, `device_temp`, `device_hum`, `device_loc` sebelum kirim data sensor.\n\n## Cara Pakai\n1. Import **collection.json** dan **environment.json** ke Postman\n2. Pilih environment **\"IoT Telemetry Mini - Local\"**\n3. Atur variable collection:\n   - `device_name` → nama device (contoh: sensor-gudang-01)\n   - `device_temp` → suhu (contoh: 30.5)\n   - `device_hum` → kelembapan (contoh: 72)\n   - `device_loc` → lokasi (contoh: Gudang Utara)\n4. Jalankan request sesuai folder",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000", "type": "string" },
+    { "key": "device_name", "value": "sensor-lab-01", "type": "string" },
+    { "key": "device_temp", "value": "30.5", "type": "string" },
+    { "key": "device_hum", "value": "72", "type": "string" },
+    { "key": "device_loc", "value": "Lab Sains Data", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET Health Check",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Success', () => pm.expect(pm.response.json().success).to.eql(true));"], "type": "text/javascript" } }],
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/health", "host": ["{{base_url}}"], "path": ["api", "health"] } },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Telemetry",
+      "item": [
+        {
+          "name": "POST Kirim Data Sensor",
+          "description": "Kirim data sensor dengan device dinamis.\n\n**Variable collection:**\n- `device_name` — nama device (contoh: sensor-gudang-01)\n- `device_temp` — suhu dalam Celsius\n- `device_hum` — kelembapan 0-100\n- `device_loc` — lokasi (opsional)\n\n**Response:** `201 Created` + `n8n_alert` + `n8n_summary`",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "pm.test('Has n8n data', () => {", "    var j = pm.response.json();", "    pm.expect(j.data).to.have.property('n8n_alert');", "    pm.expect(j.data).to.have.property('n8n_status');", "    var summary = j.data.n8n_summary || j.data.alert_status;", "    pm.collectionVariables.set('last_summary', summary);", "});"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"device_id\": \"{{device_name}}\",\n  \"temperature\": {{device_temp}},\n  \"humidity\": {{device_hum}},\n  \"location\": \"{{device_loc}}\"\n}" },
+            "url": { "raw": "{{base_url}}/api/telemetry", "host": ["{{base_url}}"], "path": ["api", "telemetry"] }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Kirim - Suhu Tinggi (Warning)",
+          "description": "Ganti `device_temp` ke 38+ sebelum kirim.\n\n**Response:** `alert_status: \"warning\"`",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "pm.test('Alert warning', () => pm.expect(pm.response.json().data.alert_status).to.eql('warning'));"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"device_id\": \"{{device_name}}\",\n  \"temperature\": {{device_temp}},\n  \"humidity\": {{device_hum}},\n  \"location\": \"{{device_loc}}\"\n}" },
+            "url": { "raw": "{{base_url}}/api/telemetry", "host": ["{{base_url}}"], "path": ["api", "telemetry"] }
+          },
+          "response": []
+        },
+        {
+          "name": "POST Kirim - Suhu Kritis (Critical)",
+          "description": "Ganti `device_temp` ke 46+ sebelum kirim.\n\n**Response:** `alert_status: \"critical\"`",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));", "pm.test('Alert critical', () => pm.expect(pm.response.json().data.alert_status).to.eql('critical'));"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"device_id\": \"{{device_name}}\",\n  \"temperature\": {{device_temp}},\n  \"humidity\": {{device_hum}},\n  \"location\": \"{{device_loc}}\"\n}" },
+            "url": { "raw": "{{base_url}}/api/telemetry", "host": ["{{base_url}}"], "path": ["api", "telemetry"] }
+          },
+          "response": []
+        },
+        {
+          "name": "GET Latest Telemetry",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Has data', () => pm.expect(pm.response.json().data).to.have.property('id'));"], "type": "text/javascript" } }],
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/telemetry/latest", "host": ["{{base_url}}"], "path": ["api", "telemetry", "latest"] } },
+          "response": []
+        },
+        {
+          "name": "GET All Telemetry History",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Has items', () => pm.expect(pm.response.json().data.items).to.be.an('array'));"], "type": "text/javascript" } }],
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/telemetry/history?limit=10", "host": ["{{base_url}}"], "path": ["api", "telemetry", "history"], "query": [{ "key": "limit", "value": "10" }] } },
+          "response": []
+        },
+        {
+          "name": "GET Device Summary",
+          "description": "Lihat ringkasan per-device + human-readable summary dari n8n.\n\n**Response:** daftar device dengan total baca, suhu terakhir, alert, dan readable summary.",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Has devices', () => {", "    var j = pm.response.json();", "    pm.expect(j.data.devices).to.be.an('array');", "    if (j.data.devices.length > 0) {", "        pm.expect(j.data.devices[0]).to.have.property('summary');", "        pm.expect(j.data.devices[0]).to.have.property('device_id');", "    }", "});"], "type": "text/javascript" } }],
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/telemetry/device-summary", "host": ["{{base_url}}"], "path": ["api", "telemetry", "device-summary"] } },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Telemetry Validation",
+      "item": [
+        {
+          "name": "POST Missing Humidity (422)",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 422', () => pm.response.to.have.status(422));", "pm.test('Error code', () => pm.expect(pm.response.json().error.code).to.eql('VALIDATION_ERROR'));"], "type": "text/javascript" } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"device_id\": \"sensor-01\",\n  \"temperature\": 30.5\n}" }, "url": { "raw": "{{base_url}}/api/telemetry", "host": ["{{base_url}}"], "path": ["api", "telemetry"] } },
+          "response": []
+        },
+        {
+          "name": "POST Invalid Temperature (422)",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 422', () => pm.response.to.have.status(422));"], "type": "text/javascript" } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"device_id\": \"sensor-01\",\n  \"temperature\": \"panas\",\n  \"humidity\": 72\n}" }, "url": { "raw": "{{base_url}}/api/telemetry", "host": ["{{base_url}}"], "path": ["api", "telemetry"] } },
+          "response": []
+        },
+        {
+          "name": "POST Invalid Humidity >100 (422)",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 422', () => pm.response.to.have.status(422));"], "type": "text/javascript" } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"device_id\": \"sensor-01\",\n  \"temperature\": 30,\n  \"humidity\": 999\n}" }, "url": { "raw": "{{base_url}}/api/telemetry", "host": ["{{base_url}}"], "path": ["api", "telemetry"] } },
+          "response": []
+        },
+        {
+          "name": "POST Missing Device ID (422)",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 422', () => pm.response.to.have.status(422));"], "type": "text/javascript" } }],
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"temperature\": 30,\n  \"humidity\": 70\n}" }, "url": { "raw": "{{base_url}}/api/telemetry", "host": ["{{base_url}}"], "path": ["api", "telemetry"] } },
+          "response": []
+        },
+        {
+          "name": "GET Rejected Payloads",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"], "type": "text/javascript" } }],
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/telemetry/rejected", "host": ["{{base_url}}"], "path": ["api", "telemetry", "rejected"] } },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Reliability",
+      "item": [
+        {
+          "name": "GET Rate Limit (Runner 8x)",
+          "event": [{ "listen": "test", "script": { "exec": ["var j = pm.response.json();", "if (pm.response.code === 200) pm.test('200 OK', () => {});", "if (pm.response.code === 429) pm.test('429 Exceeded', () => pm.expect(j.error.code).to.eql('RATE_LIMIT_EXCEEDED'));"], "type": "text/javascript" } }],
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/reliability/rate-limit", "host": ["{{base_url}}"], "path": ["api", "reliability", "rate-limit"] } },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Demo",
+      "item": [
+        {
+          "name": "POST Reset Data",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Reset OK', () => pm.expect(pm.response.json().data.reset).to.eql(true));"], "type": "text/javascript" } }],
+          "request": { "method": "POST", "url": { "raw": "{{base_url}}/api/demo/reset", "host": ["{{base_url}}"], "path": ["api", "demo", "reset"] } },
+          "response": []
+        },
+        {
+          "name": "GET Statistics",
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Has stats', () => { var d = pm.response.json().data; pm.expect(d).to.have.property('total_telemetry'); pm.expect(d).to.have.property('success_rate'); });"], "type": "text/javascript" } }],
+          "request": { "method": "GET", "url": { "raw": "{{base_url}}/api/stats", "host": ["{{base_url}}"], "path": ["api", "stats"] } },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
