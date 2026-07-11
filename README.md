@@ -294,36 +294,33 @@ Request ID muncul di:
 
 ```text
 uas-commproto-kelompok-2/
-├── manage.py               # Launcher cross-platform (Python murni)
-├── docker-compose.yml      # n8n container (+ extra_hosts untuk Linux)
-├── README.md
 ├── app/
-│   ├── main.py             # Entry point FastAPI (factory pattern)
 │   ├── config.py           # Konfigurasi terpusat
 │   ├── logger.py           # Logger ke file + console
+│   ├── main.py             # Entry point FastAPI
 │   ├── middleware.py       # Request ID, timing, CORS
-│   ├── responses.py        # Response helper (success/error)
+│   ├── n8n_client.py       # Forward ke n8n
+│   ├── requests.log        # Application log (observability)
+│   ├── requirements.txt    # Python dependencies
+│   ├── responses.py        # Response helper
+│   ├── routes.py           # Semua endpoint
 │   ├── schemas.py          # Pydantic models
 │   ├── services.py         # Business logic
-│   ├── routes.py           # Semua endpoint
 │   ├── storage.py          # File JSON CRUD
-│   ├── n8n_client.py       # Forward ke n8n
 │   ├── utils.py            # Helper functions
-│   ├── requirements.txt    # Python dependencies
-│   ├── data/               # JSON storage (auto-generated)
-│   ├── templates/          # Landing page HTML
-│   └── static/             # CSS + JS
-├── mock/
-│   └── sensor.py           # Mock sensor (3 mode)
-├── n8n/
-│   └── workflow.json       # n8n workflow
-├── postman/
-│   ├── collection.json     # Postman Collection
-│   └── environment.json    # Environment variables
-├── docs/                   # Laporan, PPT, diagram
-├── evidence/               # Screenshot testing
-└── reflection/
-    └── kontribusi-anggota.md
+│   ├── static/             # CSS & JS untuk dashboard
+│   ├── templates/          # index.html
+│   └── data/               # Auto-generated JSON storage
+├── docs/                   # Diagram, Laporan (PDF & DOCX)
+├── evidence/               # Bukti Postman, n8n, Wireshark, dan Logs
+├── mock/                   # Script CLI mock sensor
+├── n8n/                    # File workflow.json n8n
+├── postman/                # Collection & Environment JSON
+├── reflection/             # Catatan kontribusi anggota
+├── wireshark/              # Capture raw (.pcapng)
+├── docker-compose.yml      # Konfigurasi n8n (Docker)
+├── manage.py               # Launcher script utama
+└── README.md
 ```
 
 ---
