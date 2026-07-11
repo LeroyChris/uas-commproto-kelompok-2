@@ -5,6 +5,8 @@ services:
     restart: unless-stopped
     ports:
       - "5678:5678"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # Linux: biar container bisa akses host
     volumes:
       - n8n_data:/home/node/.n8n
     environment:

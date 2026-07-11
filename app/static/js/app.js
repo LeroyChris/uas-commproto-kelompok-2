@@ -1,4 +1,39 @@
+const statusDot = document.querySelector('.status-dot');
+
+function pauseApiAnimation() {
+  if (statusDot) {
+    statusDot.classList.add('paused');
+  }
+}
+
+function resumeApiAnimation() {
+  if (statusDot) {
+    statusDot.classList.remove('paused');
+  }
+}
+
+// ===== Pipeline animation state (Sensor -> FastAPI -> n8n -> Storage) =====
+// Aturan:
+//  - Saat halaman pertama kali dimuat: animasi tetap berjalan (default CSS).
+//  - Saat POST /api/demo/reset sukses -> titik hijau HILANG TOTAL.
+//  - Saat ada data sensor baru yang berhasil diproses -> titik hijau muncul lagi.
+const pipelineEl = document.getElementById('pipeline');
+let lastKnownUpdate = undefined;
+
+function stopPipelineAnimation() {
+  if (pipelineEl) {
+    pipelineEl.classList.add('idle');
+  }
+}
+
+function startPipelineAnimation() {
+  if (pipelineEl) {
+    pipelineEl.classList.remove('idle');
+  }
+}
+
 async function loadStats() {
+  resumeApiAnimation();
   const el = {
     total: document.getElementById('stat-total'),
     rejected: document.getElementById('stat-rejected'),
@@ -7,6 +42,7 @@ async function loadStats() {
     n8nProcessed: document.getElementById('n8n-processed'),
     n8nWarning: document.getElementById('n8n-warning'),
     n8nCritical: document.getElementById('n8n-critical'),
+    n8nNormal: document.getElementById('n8n-normal'),
   };
 
   try {
@@ -27,6 +63,19 @@ async function loadStats() {
     el.n8nProcessed.textContent = s.total_processed ?? '0';
     el.n8nWarning.textContent = s.total_warning ?? '0';
     el.n8nCritical.textContent = s.total_critical ?? '0';
+    el.n8nNormal.textContent = s.total_normal ?? '0';
+
+    // Deteksi reset dari luar (mis. Postman) — total_telemetry === 0 = baru direset
+    if (d.total_telemetry === 0) {
+      stopPipelineAnimation();
+      lastKnownUpdate = undefined;
+    } else if (lastKnownUpdate !== undefined && d.last_update && d.last_update !== lastKnownUpdate) {
+      // Data sensor baru masuk -> jalankan lagi animasi pipeline
+      startPipelineAnimation();
+      lastKnownUpdate = d.last_update;
+    } else {
+      lastKnownUpdate = d.last_update;
+    }
   } catch (err) {
     console.warn('Stats fetch failed:', err);
     ['total', 'rejected', 'rate'].forEach(k => el[k].textContent = '---');
@@ -34,6 +83,8 @@ async function loadStats() {
     el.n8nProcessed.textContent = '---';
     el.n8nWarning.textContent = '---';
     el.n8nCritical.textContent = '---';
+    el.n8nNormal.textContent = '---';
+    pauseApiAnimation();
   }
 }
 
@@ -43,25 +94,36 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btn) {
     btn.addEventListener('click', async (e) => {
       e.preventDefault();
+      pauseApiAnimation();
+
       btn.textContent = 'Resetting...';
       try {
         const res = await fetch('/api/demo/reset', { method: 'POST' });
         const body = await res.json();
         if (body.success) {
           btn.textContent = '✓ Reset OK';
-          loadStats();
-          setTimeout(() => btn.textContent = 'Reset Demo', 2000);
+          // Reset berhasil -> hentikan animasi pipeline
+          stopPipelineAnimation();
+          lastKnownUpdate = undefined;
+          setTimeout(() => {
+              loadStats();
+              loadDevices();
+          }, 1000);
+          setTimeout(() => btn.textContent = 'Reset Demo Data', 2000);
         } else {
           btn.textContent = 'Reset failed';
+          resumeApiAnimation();
         }
       } catch {
         btn.textContent = 'Reset failed';
+        resumeApiAnimation();
       }
     });
   }
 });
 
 async function loadDevices() {
+  resumeApiAnimation();
   const container = document.getElementById('device-list');
   if (!container) return;
 
@@ -93,6 +155,7 @@ async function loadDevices() {
     }
   } catch (err) {
     container.innerHTML = '<div class="empty-state">Gagal memuat data device.</div>';
+    pauseApiAnimation();
   }
 }
 

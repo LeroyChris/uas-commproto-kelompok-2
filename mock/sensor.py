@@ -20,7 +20,7 @@ import time
 
 import requests
 
-BASE_URL = "http://localhost:8000/api"
+BASE_URL = "http://localhost:8088/api"
 DEVICE_ID = "sensor-iot-01"
 
 

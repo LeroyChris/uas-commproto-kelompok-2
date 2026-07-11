@@ -1,5 +1,5 @@
 {
-  "name": "IoT Telemetry Processor - UAS",
+  "name": "IoT Telemetry Processor — UAS Best of Both Worlds",
   "nodes": [
     {
       "parameters": {
@@ -8,48 +8,289 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "webhook",
-      "name": "Webhook",
+      "name": "Webhook - Telemetry Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [-760, 300],
-      "webhookId": "iot-telemetry"
+      "position": [-1200, 400]
     },
     {
       "parameters": {
-        "jsCode": "// === IoT Telemetry Processor ===\n// Purpose: Process each telemetry event, track per-device stats,\n// and return human-readable summary for the dashboard.\n\nconst body = $json.body || $json;\nconst deviceId = body.device_id || 'unknown';\nconst temp = Number(body.temperature) || 0;\nconst humidity = Number(body.humidity) || 0;\n\n// Determine alert status\nlet alertStatus = 'normal';\nif (temp > 45) alertStatus = 'critical';\nelse if (temp > 35) alertStatus = 'warning';\n\n// Alert icons\nconst icon = alertStatus === 'critical' ? '\\uD83D\\uDEA8' :\n             alertStatus === 'warning' ? '\\u26A0\\uFE0F' : '\\u2705';\n\n// Build human-readable summary\nconst summaries = {\n  'normal': `${icon} Device \\\"${deviceId}\\\": Suhu ${temp}\\u00B0C — Normal. Tidak ada tindakan diperlukan.`,\n  'warning': `${icon} Device \\\"${deviceId}\\\": Suhu ${temp}\\u00B0C, Kelembapan ${humidity}% — Melebihi batas normal. Perlu dipantau.`,\n  'critical': `${icon} Device \\\"${deviceId}\\\": Suhu ${temp}\\u00B0C, Kelembapan ${humidity}% — CRITICAL! Butuh tindakan segera!`\n};\n\nconst summary = summaries[alertStatus];\n\n// Track per-device stats\nlet deviceStats = {};\ntry {\n  deviceStats = $workflow.variables.get('deviceStats') || {};\n} catch(e) {\n  deviceStats = {};\n}\n\nif (!deviceStats[deviceId]) {\n  deviceStats[deviceId] = {\n    count: 0,\n    firstSeen: new Date().toISOString(),\n    alerts: { normal: 0, warning: 0, critical: 0 }\n  };\n}\n\ndeviceStats[deviceId].count += 1;\ndeviceStats[deviceId].lastTemp = temp;\ndeviceStats[deviceId].lastAlert = alertStatus;\ndeviceStats[deviceId].lastSeen = new Date().toISOString();\ndeviceStats[deviceId].alerts[alertStatus] += 1;\n\ntry {\n  $workflow.variables.set('deviceStats', deviceStats);\n} catch(e) {\n  // workflow variables not available\n}\n\nreturn [{\n  json: {\n    alertStatus: alertStatus,\n    summary: summary,\n    device_id: deviceId,\n    temperature: temp,\n    humidity: humidity,\n    n8n_processed_at: new Date().toISOString()\n  }\n}];"
+        "method": "GET",
+        "url": "http://host.docker.internal:8088/api/health",
+        "authentication": "none",
+        "sendBody": false,
+        "options": {
+          "timeout": 5000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
       },
-      "id": "code",
-      "name": "Process Telemetry",
-      "type": "n8n-nodes-base.code",
+      "name": "HTTP Request - Check Backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-1000, 400]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "device_id",
+              "value": "={{ $node['Webhook - Telemetry Trigger'].json['body']['device_id'] }}",
+              "type": "string"
+            },
+            {
+              "name": "temperature",
+              "value": "={{ $node['Webhook - Telemetry Trigger'].json['body']['temperature'] }}",
+              "type": "string"
+            },
+            {
+              "name": "humidity",
+              "value": "={{ $node['Webhook - Telemetry Trigger'].json['body']['humidity'] }}",
+              "type": "string"
+            },
+            {
+              "name": "location",
+              "value": "={{ $node['Webhook - Telemetry Trigger'].json['body']['location'] }}",
+              "type": "string"
+            },
+            {
+              "name": "alert_status",
+              "value": "={{ $node['Webhook - Telemetry Trigger'].json['body']['alert_status'] }}",
+              "type": "string"
+            },
+            {
+              "name": "request_id",
+              "value": "={{ $node['Webhook - Telemetry Trigger'].json['body']['request_id'] }}",
+              "type": "string"
+            },
+            {
+              "name": "backendStatusCode",
+              "value": "={{ $json['statusCode'] }}",
+              "type": "number"
+            },
+            {
+              "name": "status",
+              "value": "={{ $node['Webhook - Telemetry Trigger'].json['body']['status'] || 'valid' }}",
+              "type": "string"
+            },
+            {
+              "name": "reason_message",
+              "value": "={{ $node['Webhook - Telemetry Trigger'].json['body']['reason_message'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Normalize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-780, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "backend-status-code",
+              "leftValue": "={{ $json['backendStatusCode'] }}",
+              "rightValue": 400,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            },
+            {
+              "id": "payload-status-valid",
+              "leftValue": "={{ $json['status'] }}",
+              "rightValue": "valid",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "IF Backend Reachable",
+      "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [-520, 300]
+      "position": [-580, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "alert-is-normal",
+              "leftValue": "={{ $json['alert_status'] }}",
+              "rightValue": "normal",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "IF Alert Status Normal",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-380, 260]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8088/api/n8n/alert-stats",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {"name": "total_processed","value": "={{ 1 }}"},
+            {"name": "total_normal","value": "={{ $json['alert_status'] === 'normal' ? 1 : 0 }}"},
+            {"name": "total_warning","value": "={{ $json['alert_status'] === 'warning' ? 1 : 0 }}"},
+            {"name": "total_critical","value": "={{ $json['alert_status'] === 'critical' ? 1 : 0 }}"},
+            {"name": "last_alert_status","value": "={{ $json['alert_status'] }}"},
+            {"name": "last_alert_time","value": "={{ new Date().toISOString() }}"}
+          ]
+        },
+        "options": {"timeout": 3000}
+      },
+      "name": "POST Alert Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-120, 140]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8088/api/n8n/device-summary",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {"name": "device_id","value": "={{ $json['device_id'] }}"},
+            {"name": "alert_status","value": "={{ $json['alert_status'] }}"},
+            {"name": "summary","value": "={{ $json['alert_status'] === 'critical' ? '🚨 Device ' + $json['device_id'] + ': CRITICAL — butuh tindakan segera!' : '⚠️ Device ' + $json['device_id'] + ': Warning — perlu diwaspadai.' }}"},
+            {"name": "count","value": "={{ 1 }}"}
+          ]
+        },
+        "options": {"timeout": 3000}
+      },
+      "name": "POST Device Summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-120, 420]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $node['Normalize'].json }}",
+        "options": {"responseCode": 200}
+      },
+      "name": "Respond Success Normal",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [140, 140]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $node['Normalize'].json }}",
+        "options": {"responseCode": 200}
+      },
+      "name": "Respond Success Alert",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [140, 420]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "workflowResult",
+              "value": "FAILED",
+              "type": "string"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json['status'] === 'rejected' ? 'Payload rejected: ' + ($json['reason_message'] || 'validation error') : 'Backend REST API unreachable.' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Build Failure Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-380, 640]
     },
     {
       "parameters": {
         "respondWith": "json",
         "responseBody": "={{ $json }}",
-        "options": {
-          "responseCode": 200
-        }
+        "options": {"responseCode": 502}
       },
-      "id": "respond",
-      "name": "Respond to Webhook",
+      "name": "Respond Failure",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [-280, 300]
+      "position": [-160, 640]
     }
   ],
   "connections": {
-    "Webhook": {
-      "main": [[{"node": "Process Telemetry", "type": "main", "index": 0}]]
+    "Webhook - Telemetry Trigger": {
+      "main": [[{"node": "HTTP Request - Check Backend","type":"main","index":0}]]
     },
-    "Process Telemetry": {
-      "main": [[{"node": "Respond to Webhook", "type": "main", "index": 0}]]
+    "HTTP Request - Check Backend": {
+      "main": [[{"node": "Normalize","type":"main","index":0}]]
+    },
+    "Normalize": {
+      "main": [[{"node": "IF Backend Reachable","type":"main","index":0}]]
+    },
+    "IF Backend Reachable": {
+      "main": [
+        [{"node": "IF Alert Status Normal","type":"main","index":0}],
+        [{"node": "Build Failure Response","type":"main","index":0}]
+      ]
+    },
+    "IF Alert Status Normal": {
+      "main": [
+        [{"node": "POST Alert Stats","type":"main","index":0}],
+        [{"node": "POST Device Summary","type":"main","index":0}]
+      ]
+    },
+    "POST Alert Stats": {
+      "main": [[{"node": "Respond Success Normal","type":"main","index":0}]]
+    },
+    "POST Device Summary": {
+      "main": [[{"node": "Respond Success Alert","type":"main","index":0}]]
+    },
+    "Build Failure Response": {
+      "main": [[{"node": "Respond Failure","type":"main","index":0}]]
     }
   },
   "settings": {},
-  "tags": [],
   "pinData": {},
-  "active": false
+  "active": false,
+  "tags": []
 }

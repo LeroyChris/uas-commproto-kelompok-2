@@ -87,14 +87,13 @@ def _kill_port(port: int) -> None:
 
 def cmd_backend() -> None:
     print(f"[INFO] OS: {platform.system()}")
-    _kill_port(8000)
+    _kill_port(8088)
     req = APP_DIR / "requirements.txt"
     pip_install(req, APP_DIR)
-    print("[INFO] Starting FastAPI backend on http://localhost:8000")
-    print("[INFO] Swagger UI: http://localhost:8000/docs")
-    print("[INFO] Landing page: http://localhost:8000/")
+    print("[INFO] Landing page: http://localhost:8088/")
+    print("[INFO] Swagger UI   : http://localhost:8088/docs")
     print("[INFO] Press Ctrl+C to stop.\n")
-    run_foreground([sys.executable, "server.py"], cwd=APP_DIR)
+    run_foreground([sys.executable, "main.py"], cwd=APP_DIR)
 
 
 def cmd_sensor(mode: str) -> None:
